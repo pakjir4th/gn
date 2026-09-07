@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>กุญแจจำแนกเชื้อแบคทีเรียแกรมลบ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F5F4EE;
+    --panel:#FFFFFF;
+    --ink:#1B2422;
+    --ink-soft:#4B5650;
+    --line:#DAD8CC;
+    --safranin:#AE3B45;
+    --safranin-dim:#E9D3D1;
+    --gentian:#2C6E76;
+    --gentian-dim:#D7E6E5;
+    --amber:#B9862F;
+    --amber-dim:#F1E3C6;
+    --good:#3C7A5C;
+    --good-dim:#D9EBDF;
+    --radius-sm:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans Thai','IBM Plex Mono',sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{
+    font-family:'Source Serif 4', serif;
+    font-weight:600;
+    margin:0 0 .3em 0;
+    letter-spacing:-0.01em;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  .app{
+    display:grid;
+    grid-template-columns:220px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr;}
+    .rail{
+      flex-direction:row;
+      overflow-x:auto;
+      border-right:none;
+      border-bottom:1px solid var(--line);
+      padding:14px 12px;
+    }
+    .rail .tube{flex-direction:column; min-width:64px;}
+    .rail .tube .tube-label{writing-mode:horizontal-tb; font-size:10px; text-align:center;}
+  }
+
+  /* ---- left rail : test-tube rack ---- */
+  .rail{
+    background:var(--panel);
+    border-right:1px solid var(--line);
+    padding:28px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .rail-title{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:.04em;
+    margin-bottom:18px;
+  }
+  .tube{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 8px;
+    border-radius:var(--radius-sm);
+    cursor:default;
+    opacity:.42;
+    transition:opacity .25s ease;
+  }
+  .tube.active{opacity:1;}
+  .tube.done{opacity:.85; cursor:pointer;}
+  .tube.done:hover{background:var(--paper);}
+  .tube-glass{
+    width:14px;height:26px;
+    border:1.5px solid var(--ink);
+    border-top:none;
+    border-radius:0 0 6px 6px;
+    position:relative;
+    flex:none;
+    background:linear-gradient(to top, var(--fill,#ccc) 0 55%, transparent 55% 100%);
+  }
+  .tube-label{font-size:12.5px; color:var(--ink);}
+  .tube-sub{display:block; font-size:10.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+
+  /* ---- main column ---- */
+  main{
+    padding:44px 48px 90px;
+    max-width:920px;
+  }
+  @media (max-width:640px){
+    main{padding:28px 18px 70px;}
+  }
+  .eyebrow-row{
+    display:flex; align-items:center; gap:10px;
+    margin-bottom:6px;
+  }
+  .step-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--safranin);
+  }
+  .context-chips{
+    display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 26px;
+  }
+  .chip{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px;
+    padding:4px 10px;
+    border:1px solid var(--line);
+    border-radius:20px;
+    color:var(--ink-soft);
+    background:var(--panel);
+  }
+  .lede{color:var(--ink-soft); max-width:60ch; margin-bottom:30px; font-size:15px;}
+
+  .choice-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .choice{
+    border:1px solid var(--line);
+    background:var(--panel);
+    padding:16px 14px;
+    text-align:left;
+    border-radius:var(--radius-sm);
+    cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    font-weight:500;
+    color:var(--ink);
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .choice:hover{border-color:var(--safranin); background:var(--safranin-dim);}
+  .choice:active{transform:scale(.98);}
+  .choice.selected{border-color:var(--safranin); background:var(--safranin); color:#fff;}
+  .choice .choice-sub{display:block; font-family:'IBM Plex Sans Thai',sans-serif; font-size:11.5px; font-weight:400; color:inherit; opacity:.75; margin-top:3px;}
+
+  .media-card{
+    display:flex; gap:16px; align-items:flex-start;
+    border:1px solid var(--line);
+    background:var(--panel);
+    padding:20px;
+    border-radius:var(--radius-sm);
+    margin-bottom:14px;
+    cursor:pointer;
+  }
+  .media-card.checked{border-color:var(--good); background:var(--good-dim);}
+  .media-swatch{
+    width:46px;height:46px;flex:none;border-radius:50%;
+    border:2px solid var(--ink);
+  }
+  .media-check{
+    margin-left:auto; width:22px; height:22px; border:1.5px solid var(--ink);
+    border-radius:4px; display:flex; align-items:center; justify-content:center;
+    font-size:14px; flex:none;
+  }
+  .media-card.checked .media-check{background:var(--good); border-color:var(--good); color:#fff;}
+
+  .btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13.5px;
+    padding:11px 22px;
+    border-radius:var(--radius-sm);
+    border:1px solid var(--ink);
+    background:var(--ink);
+    color:var(--paper);
+    cursor:pointer;
+  }
+  .btn:disabled{opacity:.3; cursor:not-allowed;}
+  .btn.ghost{background:transparent; color:var(--ink); border-color:var(--line);}
+  .btn.ghost:hover{border-color:var(--ink);}
+  .actions{display:flex; gap:10px; margin-top:8px;}
+
+  /* ---- test panel (filter UI) ---- */
+  .panel-block{
+    border:1px solid var(--line);
+    background:var(--panel);
+    border-radius:var(--radius-sm);
+    padding:20px 22px;
+    margin-bottom:24px;
+  }
+  .panel-block h3{font-size:14px; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft); font-weight:500; margin-bottom:14px;}
+  .test-row{
+    display:grid;
+    grid-template-columns:150px 1fr;
+    gap:14px;
+    align-items:center;
+    padding:9px 0;
+    border-bottom:1px solid var(--paper);
+  }
+  .test-row:last-child{border-bottom:none;}
+  .test-name{font-size:13.5px; color:var(--ink);}
+  .test-opts{display:flex; gap:6px; flex-wrap:wrap;}
+  .opt-btn{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    padding:6px 12px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    border-radius:20px;
+    cursor:pointer;
+    color:var(--ink-soft);
+  }
+  .opt-btn:hover{border-color:var(--gentian);}
+  .opt-btn.on{background:var(--gentian); border-color:var(--gentian); color:#fff;}
+  .opt-btn.skip{color:var(--ink-soft);}
+
+  .results-count{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px; color:var(--ink-soft); margin-bottom:10px;
+  }
+  .organism{
+    border:1px solid var(--line);
+    border-left:4px solid var(--line);
+    background:var(--panel);
+    padding:14px 18px;
+    margin-bottom:8px;
+    border-radius:var(--radius-sm);
+    transition:border-left-color .2s ease, opacity .2s ease;
+  }
+  .organism.match{border-left-color:var(--good);}
+  .organism.excluded{opacity:.32;}
+  .organism-name{font-style:italic; font-weight:600; font-size:15.5px;}
+  .organism-note{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-soft); margin-top:5px;}
+  .organism-single{
+    border:1.5px solid var(--good);
+    background:var(--good-dim);
+  }
+  .organism-single .organism-name{color:#1c4632;}
+
+  .footnote{font-size:12px; color:var(--ink-soft); margin-top:22px; padding-top:14px; border-top:1px solid var(--line);}
+  .empty-state{
+    border:1px dashed var(--line); padding:24px; text-align:center; color:var(--ink-soft);
+    font-size:13.5px; border-radius:var(--radius-sm);
+  }
+
+  a.reset-link{
+    color:var(--safranin); font-family:'IBM Plex Mono',monospace; font-size:12px; text-decoration:none;
+    cursor:pointer;
+  }
+  a.reset-link:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="rail" id="rail"></nav>
+  <main id="main"></main>
+</div>
+
+<script>
+/* ================= DATA ================= */
+
+// --- Page 4 : NFB (non-fermenters) ---
+const NFB_TESTS = ["oxidase","motility","mac","ofglucose","ofmaltose","lactose10","nitrate","citrate","urease"];
+const NFB_LABELS = {
+  oxidase:"Oxidase", motility:"Motility", mac:"Growth on MAC",
+  ofglucose:"OF glucose", ofmaltose:"OF maltose", lactose10:"10% Lactose",
+  nitrate:"Nitrate", citrate:"Citrate", urease:"Urease"
+};
+const NFB_DATA = [
+  {name:"Burkholderia cepacia complex", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"+",ofmaltose:"+",lactose10:"+",nitrate:"±",citrate:"+",urease:"±"}},
+  {name:"Burkholderia pseudomallei", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"+",ofmaltose:"+",lactose10:"+",nitrate:"+gas",citrate:"+/-",urease:"-/+"}},
+  {name:"Pseudomonas aeruginosa", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"+",ofmaltose:"-",lactose10:"-",nitrate:"+gas",citrate:"+",urease:"±"}},
+  {name:"Pseudomonas fluorescens / P. putida", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"+",ofmaltose:"-",lactose10:"-",nitrate:"±",citrate:"+",urease:"-/+"}},
+  {name:"Pseudomonas stutzeri", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"+",ofmaltose:"+",lactose10:"-",nitrate:"+gas",citrate:"+",urease:"-/+"}},
+  {name:"Shewanella algae", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"-",ofmaltose:"-",lactose10:"-",nitrate:"+",citrate:"-",urease:"-"}},
+  {name:"Shewanella putrefaciens", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"±",ofmaltose:"±",lactose10:"-",nitrate:"+",citrate:"-",urease:"-"}},
+  {name:"Sphingomonas paucimobilis", t:{oxidase:"+/-",motility:"+",mac:"-/+",ofglucose:"+",ofmaltose:"+",lactose10:"+",nitrate:"-",citrate:"-",urease:"-"}, note:"motility เฉพาะบางสายพันธุ์"},
+  {name:"Stenotrophomonas maltophilia", t:{oxidase:"-/+w",motility:"+",mac:"+",ofglucose:"+w",ofmaltose:"+",lactose10:"-",nitrate:"+/-",citrate:"±",urease:"-"}},
+  {name:"Pseudomonas / Agrobacterium / Ochrobactrum spp.", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"+",ofmaltose:"±",lactose10:"±",nitrate:"±",citrate:"±",urease:"±"}, note:"กลุ่มที่แยกกันไม่ชัดด้วยชุดทดสอบนี้"},
+  {name:"Pseudomonas / Comamonas / Alcaligenes / Bordetella / Oligella spp.", t:{oxidase:"+",motility:"+",mac:"+",ofglucose:"±",ofmaltose:"-",lactose10:"-",nitrate:"±",citrate:"±",urease:"±"}, note:"กลุ่มที่แยกกันไม่ชัดด้วยชุดทดสอบนี้"},
+  {name:"Chryseobacterium spp.", t:{oxidase:"+",motility:"-",mac:"±",ofglucose:"±",ofmaltose:"±",lactose10:"±",nitrate:"±",citrate:"-",urease:"±"}},
+  {name:"Elizabethkingia meningoseptica", t:{oxidase:"+",motility:"-",mac:"-/+",ofglucose:"+",ofmaltose:"+",lactose10:"-",nitrate:"-",citrate:"-",urease:"-"}},
+  {name:"Myroides spp.", t:{oxidase:"+",motility:"-",mac:"+",ofglucose:"-",ofmaltose:"-",lactose10:"-",nitrate:"±",citrate:"-",urease:"+"}},
+  {name:"Moraxella spp.", t:{oxidase:"+",motility:"-",mac:"+",ofglucose:"-",ofmaltose:"-",lactose10:"-",nitrate:"±",citrate:"-",urease:"-"}},
+  {name:"Moraxella phenylpyruvica", t:{oxidase:"+",motility:"-",mac:"+",ofglucose:"-",ofmaltose:"-",lactose10:"-",nitrate:"±",citrate:"-",urease:"+"}},
+  {name:"Acinetobacter calcoaceticus - A. baumannii complex", t:{oxidase:"-",motility:"-",mac:"+",ofglucose:"+",ofmaltose:"-",lactose10:"+",nitrate:"-",citrate:"+",urease:"-"}},
+  {name:"Acinetobacter lwoffii", t:{oxidase:"-",motility:"-",mac:"+/-",ofglucose:"-",ofmaltose:"-",lactose10:"-",nitrate:"-",citrate:"-",urease:"-"}},
+  {name:"Acinetobacter haemolyticus", t:{oxidase:"-",motility:"-",mac:"+",ofglucose:"±",ofmaltose:"-",lactose10:"±",nitrate:"-",citrate:"±",urease:"-"}},
+];
+
+// --- Page 5 : Vibrio / Aeromonas / Plesiomonas ---
+const VIB_TESTS = ["tcbs","mannitol","inositol","bileesculin","gasglucose","vp","citrate","nacl0","nacl3","nacl6","nacl8","nacl10","ad","od"];
+const VIB_LABELS = {
+  tcbs:"TCBS", mannitol:"Mannitol", inositol:"Inositol", bileesculin:"Bile esculin",
+  gasglucose:"Gas - glucose", vp:"VP", citrate:"Citrate",
+  nacl0:"0% NaCl", nacl3:"3% NaCl", nacl6:"6% NaCl", nacl8:"8% NaCl", nacl10:"10% NaCl",
+  ad:"AD", od:"OD"
+};
+const VIB_DATA = [
+  {name:"Vibrio cholerae", t:{tcbs:"yellow",mannitol:"+",inositol:"-",bileesculin:"ND",gasglucose:"-",vp:"+/-",citrate:"+",nacl0:"+",nacl3:"+",nacl6:"V",nacl8:"-",nacl10:"-",ad:"-",od:"+"}, note:"6% NaCl: บวก ~53%"},
+  {name:"Vibrio parahaemolyticus", t:{tcbs:"green",mannitol:"+",inositol:"-",bileesculin:"ND",gasglucose:"-",vp:"-",citrate:"-",nacl0:"-",nacl3:"+",nacl6:"+",nacl8:"+",nacl10:"-",ad:"-",od:"+"}},
+  {name:"Vibrio mimicus", t:{tcbs:"green",mannitol:"+",inositol:"-",bileesculin:"ND",gasglucose:"-",vp:"-",citrate:"+",nacl0:"+",nacl3:"+",nacl6:"V",nacl8:"-",nacl10:"-",ad:"-",od:"+"}, note:"6% NaCl: บวก ~49%"},
+  {name:"Vibrio vulnificus", t:{tcbs:"yellow/green",mannitol:"V",inositol:"-",bileesculin:"ND",gasglucose:"-",vp:"-",citrate:"+",nacl0:"-",nacl3:"+",nacl6:"+",nacl8:"V",nacl10:"-",ad:"-",od:"V"}, note:"TCBS เหลือง 90% / เขียว 10%, OD บวก ~55%"},
+  {name:"Aeromonas hydrophila complex", t:{tcbs:"-",mannitol:"+",inositol:"-",bileesculin:"+",gasglucose:"+",vp:"+",citrate:"V",nacl0:"+",nacl3:"+",nacl6:"-",nacl8:"-",nacl10:"-",ad:"+",od:"-"}},
+  {name:"Aeromonas veronii complex", t:{tcbs:"-",mannitol:"+",inositol:"-",bileesculin:"-",gasglucose:"+",vp:"V",citrate:"V",nacl0:"+",nacl3:"+",nacl6:"-",nacl8:"-",nacl10:"-",ad:"+",od:"-"}},
+  {name:"Aeromonas caviae complex", t:{tcbs:"-",mannitol:"+",inositol:"-",bileesculin:"+",gasglucose:"-",vp:"-",citrate:"V",nacl0:"+",nacl3:"+",nacl6:"-",nacl8:"-",nacl10:"-",ad:"+",od:"-"}},
+  {name:"Plesiomonas shigelloides", t:{tcbs:"-",mannitol:"-",inositol:"+",bileesculin:"ND",gasglucose:"-",vp:"-",citrate:"-",nacl0:"+",nacl3:"+",nacl6:"-",nacl8:"-",nacl10:"-",ad:"+",od:"+"}},
+];
+
+// --- Page 6 : Enterobacteriaceae, grouped by TSI ---
+const ENT_TESTS = ["motile","indole","ldc","citrate","urease","lda"];
+const ENT_LABELS = {motile:"Motile", indole:"Indole", ldc:"Lysine (LDC)", citrate:"Citrate", urease:"Urease", lda:"Lysine (LDA)"};
+
+const ENT_GROUPS = {
+  g1:{ tsi:["A/A","A/AG"], label:"A/A หรือ A/AG",
+    data:[
+      {name:"Escherichia coli", t:{motile:"+/-",indole:"+",ldc:"+/-",citrate:"-",urease:"-",lda:"-"}},
+      {name:"Enterobacter spp. / Serratia spp.", t:{motile:"+",indole:"-",ldc:"-/+",citrate:"+",urease:"-/+",lda:"-"}},
+      {name:"Hafnia alvei (rare)", t:{motile:"+",indole:"-",ldc:"+",citrate:"-",urease:"-",lda:"-"}},
+      {name:"Klebsiella pneumoniae", t:{motile:"-",indole:"-",ldc:"+",citrate:"+",urease:"+",lda:"-"}},
+      {name:"Klebsiella oxytoca", t:{motile:"-",indole:"+",ldc:"+",citrate:"+",urease:"+",lda:"-"}},
+      {name:"Klebsiella spp.", t:{motile:"-",indole:"-",ldc:"+/-",citrate:"+/-",urease:"-/+",lda:"-"}},
+      {name:"Citrobacter koseri (C. diversus)", t:{motile:"+",indole:"+",ldc:"-",citrate:"+/-",urease:"+/-",lda:"-"}},
+      {name:"Kluyvera ascorbata (rare)", t:{motile:"+",indole:"+",ldc:"+",citrate:"+",urease:"-",lda:"-"}},
+      {name:"Proteus penneri", t:{motile:"+",indole:"-",ldc:"-",citrate:"-",urease:"+",lda:"+"}},
+      {name:"Yersinia enterocolitica (motile ที่ 25°C, rare)", t:{motile:"-",indole:"+/-",ldc:"-",citrate:"-",urease:"+/-",lda:"-"}},
+    ]},
+  g2:{ tsi:["A/A+","A/AG+"], label:"A/A⁺ หรือ A/AG⁺",
+    data:[
+      {name:"Proteus vulgaris / Proteus hauseri", t:{motile:"+",indole:"+",ldc:"-",citrate:"-/+",urease:"+",lda:"+"}},
+      {name:"Proteus mirabilis", t:{motile:"+",indole:"-",ldc:"-",citrate:"+/-",urease:"+",lda:"+"}},
+      {name:"Proteus penneri", t:{motile:"+",indole:"-",ldc:"-",citrate:"-",urease:"+",lda:"-"}},
+      {name:"Citrobacter freundii", t:{motile:"+",indole:"-",ldc:"-",citrate:"+",urease:"+/-",lda:"-"}},
+      {name:"Salmonella spp. (rare)", t:{motile:"+",indole:"-",ldc:"+",citrate:"+",urease:"-",lda:"-"}},
+    ]},
+  g3:{ tsi:["K/A","K/AG"], label:"K/A หรือ K/AG",
+    data:[
+      {name:"Citrobacter koseri (C. diversus)", t:{motile:"+",indole:"+",ldc:"-",citrate:"+",urease:"+/-",lda:"-"}},
+      {name:"Escherichia coli", t:{motile:"+/-",indole:"+",ldc:"+/-",citrate:"-",urease:"-",lda:"-"}},
+      {name:"Shigella spp.", t:{motile:"-",indole:"-/+",ldc:"-",citrate:"-",urease:"-",lda:"-"}},
+      {name:"Klebsiella spp.", t:{motile:"-",indole:"-",ldc:"+/-",citrate:"+/-",urease:"-/+",lda:"-"}},
+      {name:"Enterobacter spp. / Serratia spp.", t:{motile:"+",indole:"-",ldc:"-/+",citrate:"+/-",urease:"-/+",lda:"-"}},
+      {name:"Providencia rettgeri", t:{motile:"+",indole:"+",ldc:"-",citrate:"+",urease:"+",lda:"+"}},
+      {name:"Providencia spp.", t:{motile:"+",indole:"+",ldc:"-",citrate:"+",urease:"-",lda:"+"}},
+      {name:"Morganella morganii", t:{motile:"+",indole:"+",ldc:"-",citrate:"-",urease:"+",lda:"+"}},
+      {name:"Hafnia alvei", t:{motile:"+",indole:"-",ldc:"+",citrate:"-",urease:"-",lda:"-"}},
+      {name:"Salmonella Choleraesuis", t:{motile:"+",indole:"-",ldc:"+",citrate:"-",urease:"-",lda:"-"}},
+      {name:"Salmonella Paratyphi A", t:{motile:"+",indole:"-",ldc:"-",citrate:"-",urease:"-",lda:"-"}},
+    ]},
+  g4:{ tsi:["K/A+","K/AG+"], label:"K/A⁺ หรือ K/AG⁺",
+    data:[
+      {name:"Citrobacter freundii", t:{motile:"+",indole:"-",ldc:"-",citrate:"+",urease:"+/-",lda:"-"}},
+      {name:"Edwardsiella tarda", t:{motile:"+",indole:"+",ldc:"+",citrate:"-",urease:"-",lda:"-"}},
+      {name:"Proteus vulgaris / Proteus hauseri (rare)", t:{motile:"+",indole:"+",ldc:"-",citrate:"-/+",urease:"+",lda:"+"}},
+      {name:"Morganella morganii", t:{motile:"+",indole:"+",ldc:"-",citrate:"-",urease:"+",lda:"+"}, note:"อาจมี H₂S เล็กน้อย"},
+      {name:"Proteus mirabilis", t:{motile:"+",indole:"-",ldc:"-",citrate:"+/-",urease:"+",lda:"+"}},
+      {name:"Salmonella spp.", t:{motile:"+",indole:"-",ldc:"+",citrate:"+",urease:"-",lda:"-"}},
+      {name:"Salmonella Typhi", t:{motile:"+",indole:"-",ldc:"+",citrate:"-",urease:"-",lda:"-"}, note:"มี H₂S น้อย"},
+    ]},
+};
+
+const TSI_OPTIONS = [
+  {code:"A/A", group:"g1"}, {code:"A/AG", group:"g1"},
+  {code:"A/A+", group:"g2"}, {code:"A/AG+", group:"g2"},
+  {code:"K/A", group:"g3"}, {code:"K/AG", group:"g3"},
+  {code:"K/A+", group:"g4"}, {code:"K/AG+", group:"g4"},
+  {code:"K/N", group:null}, {code:"K/N+", group:null},
+];
+
+/* ================= STATE ================= */
+let state = {
+  step:1,
+  media:{blood:false, mac:false},
+  tsi:null,
+  oxidase:null,
+  filters:{} // per current dataset test selections
+};
+
+const STEPS_META = [
+  {n:1, label:"อาหารเลี้ยงเชื้อ", sub:"Blood / MacConkey", fill:"#c8564f"},
+  {n:2, label:"TSI", sub:"Triple Sugar Iron", fill:"var(--amber)"},
+  {n:3, label:"Oxidase", sub:"cytochrome test", fill:"var(--gentian)"},
+  {n:4, label:"NFB", sub:"non-fermenter key", fill:"#8a9a6b"},
+  {n:5, label:"Vibrio / Aeromonas", sub:"oxidase +", fill:"#3f7d87"},
+  {n:6, label:"Enterobacteriaceae", sub:"oxidase -", fill:"#b98a2e"},
+];
+
+function activeStepPath(){
+  // returns ordered list of steps relevant to current path, for the rail
+  if(state.step<=2) return [1,2];
+  if(state.step===3) return [1,2,3];
+  const tsiEntry = TSI_OPTIONS.find(o=>o.code===state.tsi);
+  if(tsiEntry && tsiEntry.group===null) return [1,2,4];
+  if(state.oxidase==="+") return [1,2,3,5];
+  return [1,2,3,6];
+}
+
+function goto(step){
+  state.step = step;
+  state.filters = {};
+  render();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function resetAll(){
+  state = {step:1, media:{blood:false,mac:false}, tsi:null, oxidase:null, filters:{}};
+  render();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ================= MATCHING ================= */
+function cellMatches(cell, selected){
+  if(selected===null || selected===undefined) return true;
+  if(cell==="ND") return true;
+  const hasPlus = cell.indexOf("+")!==-1;
+  const hasMinus = cell.indexOf("-")!==-1;
+  const isVariable = cell.indexOf("V")!==-1 || cell.indexOf("±")!==-1 || (hasPlus && hasMinus);
+  if(selected==="+" || selected==="-"){
+    if(isVariable) return true;
+    if(selected==="+") return hasPlus;
+    return hasMinus;
+  }
+  // categorical (e.g. TCBS colour)
+  if(isVariable) return true;
+  return cell.toLowerCase()===selected.toLowerCase();
+}
+
+/* ================= RENDER : RAIL ================= */
+function renderRail(){
+  const rail = document.getElementById("rail");
+  const path = activeStepPath();
+  let html = `<div class="rail-title">GRAM-NEGATIVE&nbsp;KEY</div>`;
+  STEPS_META.forEach(s=>{
+    const isActive = s.n===state.step;
+    const inPath = path.includes(s.n);
+    const clickable = inPath && s.n < state.step;
+    html += `<div class="tube ${isActive?'active':''} ${clickable?'done':''}" ${clickable?`onclick="goto(${s.n})"`:''} style="${inPath?'':'display:none'}">
+      <div class="tube-glass" style="--fill:${s.fill}"></div>
+      <div>
+        <div class="tube-label">${s.n}. ${s.label}</div>
+        <span class="tube-sub">${s.sub}</span>
+      </div>
+    </div>`;
+  });
+  rail.innerHTML = html;
+}
+
+/* ================= RENDER : STEP 1 ================= */
+function renderStep1(){
+  return `
+    <div class="eyebrow-row"><span class="step-tag">ขั้นตอนที่ 1 / 6</span></div>
+    <h1>การเจริญบนอาหารเลี้ยงเชื้อ</h1>
+    <p class="lede">เลือกอาหารเลี้ยงเชื้อที่พบการเจริญของเชื้อ ต้องเลือกทั้งสองชนิดจึงจะดำเนินการต่อไปยังการอ่านผล TSI</p>
+
+    <div class="media-card ${state.media.blood?'checked':''}" onclick="toggleMedia('blood')">
+      <div class="media-swatch" style="background:#8B2E2E;"></div>
+      <div>
+        <strong>Blood agar</strong>
+        <div class="organism-note" style="margin-top:2px;">พบการเจริญของเชื้อบนอาหารเลี้ยงเชื้อเลือด</div>
+      </div>
+      <div class="media-check">${state.media.blood?'✓':''}</div>
+    </div>
+
+    <div class="media-card ${state.media.mac?'checked':''}" onclick="toggleMedia('mac')">
+      <div class="media-swatch" style="background:#C77DA8;"></div>
+      <div>
+        <strong>MacConkey agar</strong>
+        <div class="organism-note" style="margin-top:2px;">พบการเจริญของเชื้อบนอาหารเลี้ยงเชื้อ MacConkey</div>
+      </div>
+      <div class="media-check">${state.media.mac?'✓':''}</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" ${(state.media.blood&&state.media.mac)?'':'disabled'} onclick="goto(2)">ไปยังผล TSI</button>
+    </div>
+  `;
+}
+function toggleMedia(k){ state.media[k]=!state.media[k]; render(); }
+
+/* ================= RENDER : STEP 2 (TSI) ================= */
+function renderStep2(){
+  let opts = TSI_OPTIONS.map(o=>`
+    <button class="choice ${state.tsi===o.code?'selected':''}" onclick="selectTsi('${o.code}')">
+      ${o.code}
+      <span class="choice-sub">${o.group?('กลุ่ม '+ENT_GROUPS[o.group].label):'non-fermenter'}</span>
+    </button>
+  `).join("");
+  return `
+    <div class="eyebrow-row"><span class="step-tag">ขั้นตอนที่ 2 / 6</span></div>
+    <h1>ผล Triple Sugar Iron Agar (TSI)</h1>
+    <p class="lede">เลือกลักษณะผลที่อ่านได้จากหลอด TSI (slant/butt, gas, H₂S ตามสัญลักษณ์ + หมายถึงมี gas)</p>
+    <div class="choice-grid">${opts}</div>
+  `;
+}
+function selectTsi(code){
+  state.tsi = code;
+  const entry = TSI_OPTIONS.find(o=>o.code===code);
+  if(entry.group===null){ goto(4); }
+  else { goto(3); }
+}
+
+/* ================= RENDER : STEP 3 (Oxidase) ================= */
+function renderStep3(){
+  return `
+    <div class="eyebrow-row"><span class="step-tag">ขั้นตอนที่ 3 / 6</span></div>
+    <h1>การทดสอบ Oxidase</h1>
+    <div class="context-chips"><span class="chip">TSI: ${state.tsi}</span></div>
+    <p class="lede">ทดสอบ cytochrome c oxidase เพื่อแยกกลุ่ม Vibrionaceae / Aeromonas (oxidase +) ออกจากกลุ่ม Enterobacteriaceae (oxidase -)</p>
+    <div class="choice-grid" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr));">
+      <button class="choice" onclick="selectOxidase('+')">Positive (+)</button>
+      <button class="choice" onclick="selectOxidase('-')">Negative (-)</button>
+    </div>
+  `;
+}
+function selectOxidase(v){
+  state.oxidase = v;
+  goto(v==="+" ? 5 : 6);
+}
+
+/* ================= GENERIC FILTER PAGE (NFB / VIB / ENT) ================= */
+function buttonSetFor(testKey, dataset){
+  // gather distinct simplified options: '+','-' always shown; plus any categorical (TCBS)
+  if(testKey==="tcbs"){
+    return [
+      {v:"yellow", label:"เหลือง"},
+      {v:"green", label:"เขียว"},
+      {v:"-", label:"ลบ (-)"}
+    ];
+  }
+  return [{v:"+", label:"+"}, {v:"-", label:"-"}];
+}
+
+function renderFilterPanel(tests, labels, filters, prefix){
+  let rows = tests.map(k=>{
+    const opts = buttonSetFor(k);
+    const btns = opts.map(o=>`
+      <button class="opt-btn ${filters[k]===o.v?'on':''}" onclick="setFilter('${prefix}','${k}','${o.v}')">${o.label}</button>
+    `).join("");
+    return `<div class="test-row">
+      <div class="test-name">${labels[k]}</div>
+      <div class="test-opts">
+        ${btns}
+        <button class="opt-btn skip ${filters[k]===undefined?'on':''}" onclick="setFilter('${prefix}','${k}',null)">ไม่ทดสอบ</button>
+      </div>
+    </div>`;
+  }).join("");
+  return `<div class="panel-block"><h3>ผลการทดสอบทางชีวเคมี — คลิกเพื่อเลือกผลที่ได้</h3>${rows}</div>`;
+}
+
+function setFilter(prefix, key, val){
+  if(val===null){ delete state.filters[key]; }
+  else { state.filters[key] = val; }
+  render();
+}
+
+function renderOrganismList(dataset, tests){
+  const filters = state.filters;
+  const scored = dataset.map(org=>{
+    let allMatch = true;
+    tests.forEach(k=>{
+      const sel = filters[k];
+      if(sel!==undefined){
+        if(!cellMatches(org.t[k], sel)) allMatch=false;
+      }
+    });
+    return {org, allMatch};
+  });
+  const matches = scored.filter(s=>s.allMatch);
+  const activeTests = Object.keys(filters).length;
+
+  let listHtml = scored.map(s=>{
+    const cls = s.allMatch ? 'match' : 'excluded';
+    const single = (matches.length===1 && s.allMatch) ? 'organism-single' : '';
+    const detail = tests.map(k=>`<span class="mono" style="margin-right:14px;">${labelShort(k)}: <strong>${s.org.t[k]}</strong></span>`).join("");
+    return `<div class="organism ${cls} ${single}">
+      <div class="organism-name">${s.org.name}</div>
+      <div class="organism-note">${detail}</div>
+      ${s.org.note?`<div class="organism-note" style="margin-top:4px;">${s.org.note}</div>`:''}
+    </div>`;
+  }).join("");
+
+  const countLine = activeTests===0
+    ? `แสดงสิ่งมีชีวิตที่เป็นไปได้ทั้งหมด ${dataset.length} ชนิด — เลือกผลการทดสอบด้านบนเพื่อจำแนก`
+    : `พบ ${matches.length} ชนิด ที่ตรงกับผลการทดสอบ ${activeTests} รายการที่เลือก`;
+
+  return `<div class="results-count">${countLine}</div>${listHtml || '<div class="empty-state">ไม่พบเชื้อที่ตรงกับผลการทดสอบทั้งหมดที่เลือก ลองยกเลิกบางเงื่อนไข</div>'}`;
+}
+
+function labelShort(k){
+  const map = Object.assign({}, NFB_LABELS, VIB_LABELS, ENT_LABELS);
+  return map[k] || k;
+}
+
+/* ---- Step 4 : NFB ---- */
+function renderStep4(){
+  return `
+    <div class="eyebrow-row"><span class="step-tag">ขั้นตอนที่ 4 / 6</span></div>
+    <h1>Non-fermenting Gram-negative Bacilli (NFB)</h1>
+    <div class="context-chips"><span class="chip">TSI: ${state.tsi}</span></div>
+    <p class="lede">เชื้อกลุ่มนี้ไม่หมัก glucose บน TSI (K/N หรือ K/N+) ใช้ผลการทดสอบทางชีวเคมีด้านล่างเพื่อจำแนกสกุล/ชนิด</p>
+    ${renderFilterPanel(NFB_TESTS, NFB_LABELS, state.filters, 'nfb')}
+    ${renderOrganismList(NFB_DATA, NFB_TESTS)}
+  `;
+}
+
+/* ---- Step 5 : Vibrio / Aeromonas ---- */
+function renderStep5(){
+  return `
+    <div class="eyebrow-row"><span class="step-tag">ขั้นตอนที่ 5 / 6</span></div>
+    <h1>Vibrio, Aeromonas &amp; Plesiomonas</h1>
+    <div class="context-chips"><span class="chip">TSI: ${state.tsi}</span><span class="chip">Oxidase: +</span></div>
+    <p class="lede">เชื้อกลุ่มนี้ oxidase positive ใช้ผลการทดสอบด้านล่างเพื่อจำแนกชนิด</p>
+    ${renderFilterPanel(VIB_TESTS, VIB_LABELS, state.filters, 'vib')}
+    ${renderOrganismList(VIB_DATA, VIB_TESTS)}
+  `;
+}
+
+/* ---- Step 6 : Enterobacteriaceae (grouped by TSI) ---- */
+function renderStep6(){
+  const tsiEntry = TSI_OPTIONS.find(o=>o.code===state.tsi);
+  const group = tsiEntry ? ENT_GROUPS[tsiEntry.group] : ENT_GROUPS.g1;
+  return `
+    <div class="eyebrow-row"><span class="step-tag">ขั้นตอนที่ 6 / 6</span></div>
+    <h1>Enterobacteriaceae</h1>
+    <div class="context-chips"><span class="chip">TSI: ${state.tsi} (${group.label})</span><span class="chip">Oxidase: -</span></div>
+    <p class="lede">รายชื่อเชื้อที่เป็นไปได้ถูกกรองตามผล TSI ที่เลือกไว้แล้ว ใช้ผลการทดสอบด้านล่างเพื่อจำแนกต่อ</p>
+    ${renderFilterPanel(ENT_TESTS, ENT_LABELS, state.filters, 'ent')}
+    ${renderOrganismList(group.data, ENT_TESTS)}
+  `;
+}
+
+/* ================= MAIN RENDER ================= */
+function render(){
+  renderRail();
+  const main = document.getElementById("main");
+  let body="";
+  if(state.step===1) body = renderStep1();
+  else if(state.step===2) body = renderStep2();
+  else if(state.step===3) body = renderStep3();
+  else if(state.step===4) body = renderStep4();
+  else if(state.step===5) body = renderStep5();
+  else if(state.step===6) body = renderStep6();
+
+  const backTarget = state.step===6 ? 3 : (state.step===5 ? 3 : (state.step===4 ? 2 : state.step-1));
+  const showBack = state.step>1;
+
+  main.innerHTML = `
+    ${body}
+    <div class="actions" style="margin-top:28px;">
+      ${showBack ? `<button class="btn ghost" onclick="goto(${backTarget})">← ย้อนกลับ</button>` : ''}
+      <a class="reset-link" style="align-self:center; margin-left:auto;" onclick="resetAll()">เริ่มต้นใหม่ทั้งหมด</a>
+    </div>
+    <div class="footnote">
+      เครื่องมือนี้จัดทำขึ้นเพื่อการศึกษา อ้างอิงจากตารางผลการทดสอบทางชีวเคมีที่ให้มา ไม่ใช่คำวินิจฉัยทางคลินิก ควรยืนยันผลด้วยชุดทดสอบมาตรฐาน (เช่น API, MALDI-TOF) เสมอ
+    </div>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>
